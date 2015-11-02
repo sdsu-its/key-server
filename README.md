@@ -1,2 +1,2 @@
 # key-server
-Distribute API Keys can Configurations from a Centralized System
+Distribute API Keys from an Configurations from a Centralized System

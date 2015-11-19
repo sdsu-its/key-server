@@ -1,11 +1,7 @@
 package edu.sdsu.its.key_server.Models;
 
-import com.google.gson.TypeAdapter;
-
-import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 
 /**
  * Models a API Admin User

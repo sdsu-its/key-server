@@ -38,7 +38,6 @@ public class DB {
      * @return {@link Connection} The Connection to the Database
      */
     private static Connection getConnection() {
-        System.out.println(System.getenv());
         String username = System.getenv("DB_User");
         String password = System.getenv("DB_Pass");
         String dbUrl = "jdbc:postgresql://" + System.getenv("DB_Host") + "/" + System.getenv("DB_Name");
@@ -581,7 +580,7 @@ public class DB {
             List<Key> keys = new ArrayList<Key>();
 
             while (resultSet.next()) {
-                keys.add(new Key(resultSet.getString("application_key"), resultSet.getString("application_name"), resultSet.getString("permission")));
+                keys.add(new Key(resultSet.getString("application_key"), resultSet.getString("application_name"), resultSet.getString("permissions")));
             }
             statement.close();
 

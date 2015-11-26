@@ -2,7 +2,6 @@ package edu.sdsu.its.key_server;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import edu.sdsu.its.key_server.Models.UserTypeAdapter;
 import io.swagger.annotations.*;
 import org.apache.log4j.Logger;
 
@@ -55,12 +54,12 @@ public class User {
         if (DB.getInstance().isAdmin(User)) {
             Logger.getLogger(getClass()).info("Authorization PASSED for POST request to user/create for " + User.getUsername());
 
-            GsonBuilder gsonBuilder = new GsonBuilder();
-            gsonBuilder.registerTypeAdapter(User.class, new UserTypeAdapter());
-            gsonBuilder.setPrettyPrinting();
+            final GsonBuilder builder = new GsonBuilder();
+            builder.excludeFieldsWithoutExposeAnnotation();
+            final Gson gson = builder.create();
 
-            final Gson gson = gsonBuilder.create();
             edu.sdsu.its.key_server.Models.User user = gson.fromJson(payload, edu.sdsu.its.key_server.Models.User.class);
+            user.updatePassword();
 
             DB.getInstance().createUser(user);
             user.clearPassword();
@@ -107,12 +106,12 @@ public class User {
         if (DB.getInstance().isAdmin(User)) {
             Logger.getLogger(getClass()).info("Authorization PASSED for PUT request to user/update for " + User.getUsername());
 
-            GsonBuilder gsonBuilder = new GsonBuilder();
-            gsonBuilder.registerTypeAdapter(User.class, new UserTypeAdapter());
-            gsonBuilder.setPrettyPrinting();
+            final GsonBuilder builder = new GsonBuilder();
+            builder.excludeFieldsWithoutExposeAnnotation();
+            final Gson gson = builder.create();
 
-            final Gson gson = gsonBuilder.create();
             edu.sdsu.its.key_server.Models.User user = gson.fromJson(payload, edu.sdsu.its.key_server.Models.User.class);
+            user.updatePassword();
 
             DB.getInstance().updateUser(user);
             user.clearPassword();
@@ -157,12 +156,12 @@ public class User {
         if (DB.getInstance().isAdmin(User)) {
             Logger.getLogger(getClass()).info("Authorization PASSED for DELETE request to user/delete for " + User.getUsername());
 
-            GsonBuilder gsonBuilder = new GsonBuilder();
-            gsonBuilder.registerTypeAdapter(User.class, new UserTypeAdapter());
-            gsonBuilder.setPrettyPrinting();
+            final GsonBuilder builder = new GsonBuilder();
+            builder.excludeFieldsWithoutExposeAnnotation();
+            final Gson gson = builder.create();
 
-            final Gson gson = gsonBuilder.create();
             edu.sdsu.its.key_server.Models.User user = gson.fromJson(payload, edu.sdsu.its.key_server.Models.User.class);
+            user.updatePassword();
 
             DB.getInstance().deleteUser(user);
 
@@ -200,11 +199,10 @@ public class User {
 
             edu.sdsu.its.key_server.Models.User[] apps = DB.getInstance().listUsers();
 
-            GsonBuilder gsonBuilder = new GsonBuilder();
-            gsonBuilder.registerTypeAdapter(User.class, new UserTypeAdapter());
-            gsonBuilder.setPrettyPrinting();
+            final GsonBuilder builder = new GsonBuilder();
+            builder.excludeFieldsWithoutExposeAnnotation();
+            final Gson gson = builder.create();
 
-            final Gson gson = gsonBuilder.create();
             return Response.status(Response.Status.OK).entity(gson.toJson(apps)).build();
         } else {
             Logger.getLogger(getClass()).info("Authorization FAILED for GET request to /user/list for " + User.getUsername());

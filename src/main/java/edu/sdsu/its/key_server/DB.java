@@ -196,12 +196,12 @@ public class DB {
         try {
             String update_user_sql = "UPDATE users SET ";
             if (user.getEmail() != null) {
-                update_user_sql += "email='" + user.getEmail() + "'";
+                update_user_sql += "email='" + user.getEmail() + "',";
             }
             if (user.getPasswordHash() != null) {
-                update_user_sql += ",\n password='" + user.getPasswordHash() + "'";
+                update_user_sql += "password='" + user.getPasswordHash() + "',";
             }
-            update_user_sql += "\n, updated=now() WHERE user_name='" + user.getUsername() + "';";
+            update_user_sql += "updated=now() WHERE user_name='" + user.getUsername() + "';";
 
             executeStatement(update_user_sql);
         } catch (SQLException e) {
@@ -399,12 +399,12 @@ public class DB {
             String update_param_sql = "UPDATE apps." + app_name + " SET \n";
 
             if (param.getName() != null) {
-                update_param_sql += "parameter_name = '" + param.getName() + "'";
+                update_param_sql += "parameter_name = '" + param.getName() + "',";
             }
             if (param.getDecryptedValue() != null) {
-                update_param_sql += ", \nparameter_value = '" + param.getEncryptedValue() + "'";
+                update_param_sql += "parameter_value = '" + param.getEncryptedValue() + "',";
             }
-            update_param_sql += ", \nupdated = now() WHERE parameter_name = '" + param.getName() + "' ;";
+            update_param_sql += "updated = now() WHERE parameter_name = '" + param.getName() + "' ;";
 
             executeStatement(update_param_sql);
         } catch (SQLException e) {
@@ -525,12 +525,12 @@ public class DB {
             String update_key_sql = "UPDATE api_keys SET ";
 
             if (key.getApplication_name() != null) {
-                update_key_sql += "application_name = '" + key.getApplication_name() + "'";
+                update_key_sql += "application_name = '" + key.getApplication_name() + "',";
             }
             if (key.getPermissions() != null) {
-                update_key_sql += ", \npermissions = '" + key.getPermissions() + "'";
+                update_key_sql += "permissions = '" + key.getPermissions() + "',";
             }
-            update_key_sql += " updated = now() WHERE application_key = '" + key.getApplication_key() + "';";
+            update_key_sql += "updated = now() WHERE application_key = '" + key.getApplication_key() + "';";
 
             executeStatement(update_key_sql);
 

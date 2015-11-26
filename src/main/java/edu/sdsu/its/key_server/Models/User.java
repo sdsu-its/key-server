@@ -1,15 +1,23 @@
 package edu.sdsu.its.key_server.Models;
 
+import com.google.gson.annotations.Expose;
+import org.apache.log4j.Logger;
+
+import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 
 /**
  * Models a API Admin User
  */
 public class User {
-    protected String username;
-    protected String password;
-    protected String email;
+    @Expose
+    private String username;
+    @Expose
+    private String email;
+    @Expose(serialize = false)
+    private String password;
 
     public User(String username, String password) {
         this.username = username;
@@ -50,6 +58,14 @@ public class User {
 
     public void clearPassword() {
         this.password = null;
+    }
+
+    public void updatePassword() {
+        try {
+            this.password = new String(Base64.getDecoder().decode(this.password.getBytes("UTF-8")));
+        } catch (UnsupportedEncodingException e) {
+            Logger.getLogger(getClass()).warn("Problem Decoding Password", e);
+        }
     }
 }
 

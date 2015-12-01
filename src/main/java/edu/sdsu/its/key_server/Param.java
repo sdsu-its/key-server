@@ -178,8 +178,7 @@ public class Param {
     public Response deleteParam(@HeaderParam("authorization") @ApiParam(value = "Basic HTTP Auth Header", required = true) final String auth,
                                 @QueryParam("app") @ApiParam(value = "Application Name", required = true) final String applicationName,
                                 @ApiParam(value = "Param JSON \n{\n" +
-                                        "  \"name\": \"p_name\",\n" +
-                                        "  \"value\": \"p_value\"\n" +
+                                        "  \"name\": \"p_name\"" +
                                         "}", required = true) final String payload) {
         Logger.getLogger(getClass()).info(String.format("Received Request: [DELETE] /param/delete - auth=\"%s\" & app=\"%s\" & payload=\"%s\"", auth, applicationName, payload));
 

@@ -19,8 +19,8 @@ import java.util.Base64;
  *         Created on 11/2/15.
  */
 
-@Path("/")
-@Api(value = "", description = "Primary API Functions")
+@Path("/client")
+@Api(value = "client", description = "Primary API Functions")
 public class Web {
     protected static User decodeAuth(String authHeader) {
         if (authHeader == null) {

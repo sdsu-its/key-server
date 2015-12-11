@@ -20,6 +20,7 @@ import java.util.Properties;
  */
 public class DB {
     private static DB instance;
+    private static Connection connection = null;
 
     /**
      * Create DB Instance.
@@ -38,28 +39,41 @@ public class DB {
      * @return {@link Connection} The Connection to the Database
      */
     private static Connection getConnection() {
-        String username = System.getenv("DB_User");
-        String password = System.getenv("DB_Pass");
-        String dbUrl = "jdbc:postgresql://" + System.getenv("DB_Host") + "/" + System.getenv("DB_Name");
-        Properties props = new Properties();
-        props.setProperty("user", username);
-        props.setProperty("password", password);
-        props.setProperty("ssl", "true");
-        props.setProperty("sslfactory", "org.postgresql.ssl.NonValidatingFactory");
+        if (connection == null) {
+            for (int i = 0; i < 5; i++) {
+                String username = System.getenv("DB_User");
+                String password = System.getenv("DB_Pass");
+                String dbUrl = "jdbc:postgresql://" + System.getenv("DB_Host") + "/" + System.getenv("DB_Name");
+                Properties props = new Properties();
+                props.setProperty("user", username);
+                props.setProperty("password", password);
+                props.setProperty("ssl", "true");
+                props.setProperty("sslfactory", "org.postgresql.ssl.NonValidatingFactory");
 
-        try {
-            Class.forName("org.postgresql.Driver");
-            return DriverManager.getConnection(dbUrl, props);
-        } catch (ClassNotFoundException e) {
-            Logger.getLogger(getInstance().getClass()).fatal("Driver not found", e);
-            System.exit(1);
-            return null;
-        } catch (SQLException e) {
-            Logger.getLogger(getInstance().getClass()).error("Problem Initializing Driver");
-            System.exit(1);
-            return null;
+                try {
+                    Class.forName("org.postgresql.Driver");
+                    connection = DriverManager.getConnection(dbUrl, props);
+                } catch (ClassNotFoundException e) {
+                    Logger.getLogger(getInstance().getClass()).fatal("Driver not found", e);
+                    System.exit(69);
+                } catch (SQLException e) {
+                    Logger.getLogger(getInstance().getClass()).error("Problem Initializing Driver", e);
+                }
+
+                try {
+                    Thread.sleep(1500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            if (connection == null) {
+                Logger.getLogger(getInstance().getClass()).fatal("Could not create/return a DB Connection");
+                System.exit(69);
+            }
         }
+        return connection;
     }
+
 
     /**
      * We only want one instance of the DB to insure that there are no conflicts.
@@ -98,24 +112,33 @@ public class DB {
      */
     public boolean tableExists(final String tableName) {
         assert getConnection() != null;
+        Statement statement = null;
+        boolean b;
+
         try {
-            Statement statement = getConnection().createStatement();
+            statement = getConnection().createStatement();
             ResultSet resultSet = statement.executeQuery("SELECT EXISTS(\n" +
                     "    SELECT 1\n" +
                     "    FROM information_schema.tables\n" +
                     "    WHERE table_name = '" + tableName + "');");
 
             resultSet.next();
-            boolean result = resultSet.getBoolean("exists");
-            statement.close();
-
-            return result;
+            b = resultSet.getBoolean("exists");
 
 
         } catch (SQLException e) {
             Logger.getLogger(getClass()).error("Problem Connecting to DB to check for Table Existence", e);
-            return false;
+            b = false;
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    Logger.getLogger(getClass()).debug("There may be a problem Closing the Connection to the DB", e);
+                }
+            }
         }
+        return b;
     }
 
     /**
@@ -125,7 +148,7 @@ public class DB {
         try {
 
             final String users_table_sql = "CREATE TABLE users (" +
-                    "  user_name TEXT," +
+                    "  user_name TEXT PRIMARY KEY," +
                     "  email     TEXT," +
                     "  password  TEXT," +
                     "  created   TIMESTAMP," +
@@ -135,7 +158,7 @@ public class DB {
             executeStatement(users_table_sql);
 
             final String api_keys_table_sql = "CREATE TABLE api_keys (" +
-                    "  application_key  TEXT," +
+                    "  application_key  TEXT PRIMARY KEY," +
                     "  application_name TEXT," +
                     "  permissions      TEXT," +
                     "  created          TIMESTAMP," +
@@ -159,21 +182,32 @@ public class DB {
      */
     public boolean isAdmin(final User User) {
         assert getConnection() != null;
+        Statement statement = null;
+        boolean b;
         try {
-            Statement statement = getConnection().createStatement();
+            statement = getConnection().createStatement();
             ResultSet resultSet = statement.executeQuery("SELECT password FROM users WHERE user_name = '" + User.getUsername() + "';");
             if (!resultSet.next()) {                            //if rs.next() returns false
                 Logger.getLogger(getClass()).info(String.format("User %s was not found in DB.", User.getUsername()));
-                return false;
+                b = false;
             }
             String password_hash = resultSet.getString("password");
 
-            return User.getPasswordHash().equals(password_hash);
+            b = User.getPasswordHash().equals(password_hash);
 
         } catch (SQLException e) {
             Logger.getLogger(getClass()).error(String.format("Problem Accessing User Information from DB for %s", User.getUsername()), e);
-            return false;
+            b = false;
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    Logger.getLogger(getClass()).debug("There may be a problem Closing the Connection to the DB", e);
+                }
+            }
         }
+        return b;
     }
 
     public void createUser(final User user) {
@@ -222,8 +256,11 @@ public class DB {
 
     public User[] listUsers() {
         assert getConnection() != null;
+        Statement statement = null;
+        User[] u;
+
         try {
-            Statement statement = getConnection().createStatement();
+            statement = getConnection().createStatement();
             final String list_users_sql = "SELECT * FROM users ORDER BY user_name;";
             Logger.getLogger(getClass()).info("Executing SQL Query - " + list_users_sql);
             ResultSet resultSet = statement.executeQuery(list_users_sql);
@@ -240,32 +277,52 @@ public class DB {
                 user_array[i] = users.get(i);
             }
 
-            return user_array;
+            u = user_array;
 
         } catch (SQLException e) {
             Logger.getLogger(getClass()).error("Problem Listing Users in DB", e);
-            return new User[0];
+            u = new User[0];
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    Logger.getLogger(getClass()).debug("There may be a problem Closing the Connection to the DB", e);
+                }
+            }
         }
+        return u;
     }
 
     public User getUser(final String username) {
         assert getConnection() != null;
+        Statement statement = null;
+        User u;
 
         try {
             final String get_user_sql = "SELECT * FROM users WHERE user_name='" + username + "';";
-            Statement statement = getConnection().createStatement();
+            statement = getConnection().createStatement();
             Logger.getLogger(getClass()).info("Executing SQL Query - " + get_user_sql);
             ResultSet resultSet = statement.executeQuery(get_user_sql);
             if (!resultSet.next()) {                            //if rs.next() returns false
                 Logger.getLogger(getClass()).info(String.format("User %s was not found", username));
-                return new User("", "", "");
+                u = new User("", "", "");
             }
 
-            return new User(resultSet.getString("user_name"), "", resultSet.getString("email"));
+            u = new User(resultSet.getString("user_name"), "", resultSet.getString("email"));
         } catch (SQLException e) {
             Logger.getLogger(getClass()).error("Problem retrieving user from DB", e);
-            return new User("", "", "");
+            u = new User("", "", "");
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    Logger.getLogger(getClass()).debug("There may be a problem Closing the Connection to the DB", e);
+                }
+            }
         }
+        return u;
     }
 
     /**
@@ -277,7 +334,7 @@ public class DB {
         try {
 
             final String create_app_sql = "CREATE TABLE apps." + app_name + " (" +
-                    "  parameter_name  TEXT," +
+                    "  parameter_name  TEXT PRIMARY KEY," +
                     "  parameter_value TEXT," +
                     "  created         TIMESTAMP," +
                     "  updated         TIMESTAMP" +
@@ -310,8 +367,11 @@ public class DB {
      */
     public App[] listApps() {
         assert getConnection() != null;
+        Statement statement = null;
+        App[] a;
+
         try {
-            Statement statement = getConnection().createStatement();
+            statement = getConnection().createStatement();
             final String list_apps_sql = "SELECT table_name\n" +
                     "FROM information_schema.tables\n" +
                     "WHERE table_schema = 'apps'\n" +
@@ -332,12 +392,22 @@ public class DB {
                 apps_array[i] = apps.get(i);
             }
 
-            return apps_array;
+            a = apps_array;
 
         } catch (SQLException e) {
             Logger.getLogger(getClass()).error("Problem Listing Apps in DB", e);
-            return new App[0];
+            a = new App[0];
+        } finally {
+            try {
+                if (statement != null && !statement.isClosed()) {
+                    statement.close();
+                }
+            } catch (SQLException e) {
+                Logger.getLogger(getClass()).debug("There may be a problem Closing the Connection to the DB", e);
+            }
         }
+
+        return a;
     }
 
     /**
@@ -349,21 +419,32 @@ public class DB {
      */
     public boolean paramExists(final String app_name, final String param_name) {
         assert getConnection() != null;
+        Statement statement = null;
+        boolean r;
         try {
             final String check_param_sql = "SELECT exists(SELECT 1 FROM apps." + app_name + " WHERE parameter_name='" + param_name + "')";
 
-            Statement statement = getConnection().createStatement();
+            statement = getConnection().createStatement();
             ResultSet resultSet = statement.executeQuery(check_param_sql);
             if (!resultSet.next()) {                            //if rs.next() returns false
                 Logger.getLogger(getClass()).info(String.format("Param %s was not found for %s.", param_name, app_name));
-                return false;
+                r = false;
             }
 
-            return resultSet.getBoolean("exists");
+            r = resultSet.getBoolean("exists");
         } catch (SQLException e) {
             Logger.getLogger(getClass()).info("Problem Connecting to DB to check for Param Existence", e);
-            return false;
+            r = false;
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    Logger.getLogger(getClass()).debug("There may be a problem Closing the Connection to the DB", e);
+                }
+            }
         }
+        return r;
     }
 
     /**
@@ -438,18 +519,30 @@ public class DB {
      */
     public Param getParam(final String app_name, final String param_name) {
         assert getConnection() != null;
+        Statement statement = null;
+        Param p;
         try {
             final String get_param_sql = "SELECT * FROM apps." + app_name + " WHERE parameter_name='" + param_name + "';";
 
-            Statement statement = getConnection().createStatement();
+            statement = getConnection().createStatement();
             ResultSet resultSet = statement.executeQuery(get_param_sql);
             resultSet.next();
 
-            return new Param(param_name, resultSet.getString("parameter_value"));
+            p = new Param(param_name, resultSet.getString("parameter_value"));
         } catch (SQLException e) {
             Logger.getLogger(getClass()).error(String.format("Problem getting Parameter with name '%s' from DB", param_name), e);
-            return null;
+            p = null;
+        } finally {
+            try {
+                if (statement != null && !statement.isClosed()) {
+                    statement.close();
+                }
+            } catch (SQLException e) {
+                Logger.getLogger(getClass()).debug("There may be a problem Closing the Connection to the DB", e);
+            }
         }
+
+        return p;
     }
 
     /**
@@ -548,10 +641,11 @@ public class DB {
      */
     public Key getAPIKey(final String apiKey) {
         assert getConnection() != null;
+        Statement statement = null;
         try {
             final String get_param_sql = "SELECT * FROM api_keys WHERE application_key='" + apiKey + "';";
 
-            Statement statement = getConnection().createStatement();
+            statement = getConnection().createStatement();
             ResultSet resultSet = statement.executeQuery(get_param_sql);
             resultSet.next();
 
@@ -559,6 +653,14 @@ public class DB {
         } catch (SQLException e) {
             Logger.getLogger(getClass()).error(String.format("Problem getting API Key Info for key '%s' from DB", apiKey), e);
             return null;
+        } finally {
+            if (statement != null) {
+                try {
+                    statement.close();
+                } catch (SQLException e) {
+                    Logger.getLogger(getClass()).debug("There may be a problem Closing the Connection to the DB", e);
+                }
+            }
         }
     }
 

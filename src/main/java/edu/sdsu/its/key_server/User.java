@@ -18,6 +18,33 @@ import javax.ws.rs.core.Response;
 @Path("/user")
 @Api(value = "/user", description = "Manage Admin Users")
 public class User {
+    @Path("verify")
+    @GET
+    @Consumes(MediaType.WILDCARD)
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            value = "Check if Login Credentials are Valid",
+            notes = "Check if the supplied HTTP Auth Credentials are valid, " +
+                    "used to check Credentials at Login for Key-Server Admin",
+            response = Response.class
+    )
+    @ApiResponses({
+            @ApiResponse(code = 200, message = "credentials are valid"),
+            @ApiResponse(code = 401, message = "credentials are invalid")
+    })
+    public Response checkLogin(@HeaderParam("authorization") @ApiParam(value = "Basic HTTP Auth Header", required = true) final String auth) {
+        Logger.getLogger(getClass()).info(String.format("Received Request: [GET] /user/verify - auth=\"%s\"", auth));
+        edu.sdsu.its.key_server.Models.User User = Web.decodeAuth(auth);
+        if (DB.getInstance().isAdmin(User)) {
+            Logger.getLogger(getClass()).info("Authorization PASSED for GET request to user/verify for " + User.getUsername());
+
+            return Response.status(Response.Status.OK).entity("{\"message\": \"Credentials Valid\"}").build();
+        }
+
+        Logger.getLogger(getClass()).info("Authorization FAILED for GET request to user/verify for " + User.getUsername());
+        return Response.status(Response.Status.UNAUTHORIZED).entity("{\"message\": \"Credentials Invalid\"}").build();
+    }
+
     @Path("create")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
